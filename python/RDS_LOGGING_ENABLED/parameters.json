@@ -1,0 +1,12 @@
+{
+  "Version": "1.0",
+  "Parameters": {
+    "RuleName": "RDS_LOGGING_ENABLED",
+    "SourceRuntime": "python3.6-lib",
+    "CodeKey": "RDS_LOGGING_ENABLED.zip",
+    "InputParameters": "{}",
+    "OptionalParameters": "{}",
+    "SourcePeriodic": "One_Hour"
+  },
+  "Tags": "[]"
+}
