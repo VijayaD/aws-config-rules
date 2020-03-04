@@ -9,6 +9,45 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for
 # the specific language governing permissions and limitations under the License.
 
+'''
+#####################################
+##           Gherkin               ##
+#####################################
+Rule Name:
+  RDS_LOGGING_ENABLED
+
+Description:
+  check whether respective logs are enabled or not.
+      For Oracle engine -- ["trace", "audit", "alert", "listener"]
+      For Postgres engine -- ["postgresql", "upgrade"]
+      For MariaDB -- ["audit", "error", "general", "slowquery"]
+      For Mysql -- ["audit", "error", "general", "slowquery"]
+      For SqlServer -- ["error", "agent"]
+
+Indicative Severity:
+  Medium
+
+Trigger:
+  Periodic
+
+Reports on:
+  AWS::RDS::DBInstance
+
+Rule Parameters:
+  None
+
+Scenarios:
+  Scenario: 1
+      Given: RDS DBinstance identifier is valid
+      And: respective logfiles(e.g. Alert, Audit, Trace, Listener logs) are enabled by dbinstance engine(e.g. Oracle)
+     Then: Return COMPLIANT
+
+  Scenario: 2
+      Given: RDS DBInstance identifier is valid
+      And: one or more logs are not enabled
+      Then: Return NON_COMPLIANT
+'''
+
 import json
 from rdklib import Evaluator, Evaluation, ConfigRule, ComplianceType
 
