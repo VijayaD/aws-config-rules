@@ -6,7 +6,7 @@
     "CodeKey": "RDS_LOGGING_ENABLED.zip",
     "InputParameters": "{}",
     "OptionalParameters": "{}",
-    "SourcePeriodic": "One_Hour"
+    "SourceEvents": "AWS::RDS::DBInstance"
   },
   "Tags": "[]"
 }

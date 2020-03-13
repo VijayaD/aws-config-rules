@@ -10,80 +10,59 @@
 # the specific language governing permissions and limitations under the License.
 
 import unittest
+import rdklibtest
 from mock import patch, MagicMock
 from rdklib import Evaluation, ComplianceType
-import rdklibtest
 
-##############
-# Parameters #
-##############
-
-# Define the default resource to report to Config Rules
 RESOURCE_TYPE = 'AWS::RDS::DBInstance'
-
-#############
-# Main Code #
-#############
-
 MODULE = __import__('RDS_LOGGING_ENABLED')
 RULE = MODULE.RDS_LOGGING_ENABLED()
 
 CLIENT_FACTORY = MagicMock()
-
-#example for mocking S3 API calls
 RDS_CLIENT_MOCK = MagicMock()
-CONFIG_CLIENT = MagicMock()
 
 
-def mock_get_client(service, *args, **kwargs):
-    if service == 'rds':
+def mock_get_client(client_name, *args, **kwargs):
+    if client_name == 'rds':
         return RDS_CLIENT_MOCK
-    if service == 'config':
-        return CONFIG_CLIENT
     raise Exception("Attempting to create an unknown client")
 
 
 @patch.object(CLIENT_FACTORY, 'build_client', MagicMock(side_effect=mock_get_client))
 class ComplianceTest(unittest.TestCase):
 
-    db_instance_compliant = {"DBInstances": [
-        {
-            "DBInstanceIdentifier": "prod-dbms-backened",
-            "Engine": "postgres",
-            "EnabledCloudwatchLogsExports": [
-                "postgresql",
-                "upgrade"
-            ]
-        }]}
+    all_logs_enabled_compliant = {
+        "configuration": {
+            "enabledCloudwatchLogsExports": ["postgresql", "upgrade"],
+            "engine": "postgres"
+        }
+    }
+    no_logs_enabled_non_compliant = {
+        "configuration": {
+            "enabledCloudwatchLogsExports": [],
+            "engine": "postgres"
+        }
+    }
+    one_log_enabled_non_compliant = {
+        "configuration": {
+            "enabledCloudwatchLogsExports": ["error"],
+            "engine": "aurora"
+        }
+    }
 
-    db_instance_non_compliant = {"DBInstances": [
-        {
-            "DBInstanceIdentifier": "dbms-backened",
-            "Engine": "postgres",
-            "EnabledCloudwatchLogsExports": [
-                "postgresql"
-            ]
-        }]}
-
-    def setUp(self):
-        pass
-
-    def test_01_compliant(self):
-        CONFIG_CLIENT.select_resource_config.return_value = {"Results": ['{"resourceName":"prod-dbms-backened"}']}
-        RDS_CLIENT_MOCK.describe_db_instances.return_value = self.db_instance_compliant
-        response = RULE.evaluate_periodic("", CLIENT_FACTORY, "")
-        print(response)
-        resp_expected = [
-            Evaluation(ComplianceType.COMPLIANT, "prod-dbms-backened", RESOURCE_TYPE)
-        ]
-        print(resp_expected)
+    def test_scenario1_evaluatechange_alllogsenabledonrds_returnscompliant(self):
+        response = RULE.evaluate_change(None, CLIENT_FACTORY, self.all_logs_enabled_compliant, None)
+        resp_expected = [Evaluation(ComplianceType.COMPLIANT)]
         rdklibtest.assert_successful_evaluation(self, response, resp_expected, 1)
 
-    def test_02_non_compliant(self):
-        CONFIG_CLIENT.select_resource_config.return_value = {"Results": ['{"resourceName":"dbms-backened"}']}
-        RDS_CLIENT_MOCK.describe_images.return_value = self.db_instance_non_compliant
-        response = RULE.evaluate_periodic("", CLIENT_FACTORY, "")
-        resp_expected = [
-            Evaluation(ComplianceType.COMPLIANT, "dbms-backened", RESOURCE_TYPE)
-        ]
+    def test_scenario2_evaluatechange_nologsenabledonrds_returnsnoncompliant(self):
+        response = RULE.evaluate_change(None, CLIENT_FACTORY, self.no_logs_enabled_non_compliant, None)
+        resp_expected = [Evaluation(ComplianceType.NON_COMPLIANT,
+                                    annotation="['postgresql', 'upgrade'] logs are not enabled")]
+        rdklibtest.assert_successful_evaluation(self, response, resp_expected, 1)
+
+    def test_scenario2_evaluatechange_onetypeoflogisenabledonrds_returnsnoncompliant(self):
+        response = RULE.evaluate_change(None, CLIENT_FACTORY, self.one_log_enabled_non_compliant, None)
+        resp_expected = [Evaluation(ComplianceType.NON_COMPLIANT,
+                                    annotation="['audit', 'general', 'slowquery'] logs are not enabled")]
         rdklibtest.assert_successful_evaluation(self, response, resp_expected, 1)
