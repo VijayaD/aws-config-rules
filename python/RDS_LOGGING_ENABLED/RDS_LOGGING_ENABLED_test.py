@@ -48,7 +48,7 @@ class ComplianceTest(unittest.TestCase):
             "engine": "aurora"
         }
     }
-    specified_engine_not_present_not_applicable = {
+    engine_not_applicable = {
         "configuration": {
             "enabledCloudwatchLogsExports": ["error"],
             "engine": "redshift"
@@ -73,7 +73,7 @@ class ComplianceTest(unittest.TestCase):
         rdklibtest.assert_successful_evaluation(self, response, resp_expected)
 
     def test_scenario3_evaluatechange_specifiedenginenotpresent_returnsnotapplicable(self):
-        response = RULE.evaluate_change(None, CLIENT_FACTORY, self.specified_engine_not_present_not_applicable, None)
+        response = RULE.evaluate_change(None, CLIENT_FACTORY, self.engine_not_applicable, None)
         resp_expected = [Evaluation(ComplianceType.NOT_APPLICABLE,
                                     annotation="Engine is not defined")]
         rdklibtest.assert_successful_evaluation(self, response, resp_expected)
