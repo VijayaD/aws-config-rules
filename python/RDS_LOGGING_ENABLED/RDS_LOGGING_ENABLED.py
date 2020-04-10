@@ -48,10 +48,13 @@ Scenarios:
   Scenario: 2
     Given: 'enabledCloudwatchLogsExports' in configuration item of Amazon RDS instance has one or more log types not enabled
     Then: Return NON_COMPLIANT
+
+  Scenario: 3
+    Given: If engine specified is not in the above mentioned Amazon RDS engines
+    Then: Return NOT_APPLICABLE
+
 """
-
 from rdklib import Evaluator, Evaluation, ConfigRule, ComplianceType
-
 
 class RDS_LOGGING_ENABLED(ConfigRule):
 
@@ -75,16 +78,15 @@ class RDS_LOGGING_ENABLED(ConfigRule):
     def evaluate_change(self, event, client_factory, configuration_item, valid_rule_parameters):
         configuration = configuration_item.get('configuration')
         engine = configuration.get('engine')
-        if engine:
-            logs_list = self.engine_logs.get(engine)
+        logs_list = self.engine_logs.get(engine)
+        if logs_list:
             logs_enabled_list = configuration.get('enabledCloudwatchLogsExports', [])
             logs_not_enabled_list = list(set(logs_list) - set(logs_enabled_list))
             if logs_not_enabled_list:
                 return [Evaluation(ComplianceType.NON_COMPLIANT,
-                                   annotation='{} logs are not enabled'.format(sorted(logs_not_enabled_list)))]
+                                   annotation='One or more logs are not enabled')]
             return [Evaluation(ComplianceType.COMPLIANT)]
         return [Evaluation(ComplianceType.NOT_APPLICABLE, annotation="Engine is not defined")]
-
 
 def lambda_handler(event, context):
     my_rule = RDS_LOGGING_ENABLED()

@@ -15,18 +15,17 @@ from mock import patch, MagicMock
 from rdklib import Evaluation, ComplianceType
 
 RESOURCE_TYPE = 'AWS::RDS::DBInstance'
+
 MODULE = __import__('RDS_LOGGING_ENABLED')
 RULE = MODULE.RDS_LOGGING_ENABLED()
 
 CLIENT_FACTORY = MagicMock()
 RDS_CLIENT_MOCK = MagicMock()
 
-
 def mock_get_client(client_name, *args, **kwargs):
     if client_name == 'rds':
         return RDS_CLIENT_MOCK
     raise Exception("Attempting to create an unknown client")
-
 
 @patch.object(CLIENT_FACTORY, 'build_client', MagicMock(side_effect=mock_get_client))
 class ComplianceTest(unittest.TestCase):
@@ -49,20 +48,32 @@ class ComplianceTest(unittest.TestCase):
             "engine": "aurora"
         }
     }
+    specified_engine_not_present_not_applicable = {
+        "configuration": {
+            "enabledCloudwatchLogsExports": ["error"],
+            "engine": "redshift"
+        }
+    }
 
     def test_scenario1_evaluatechange_alllogsenabledonrds_returnscompliant(self):
         response = RULE.evaluate_change(None, CLIENT_FACTORY, self.all_logs_enabled_compliant, None)
         resp_expected = [Evaluation(ComplianceType.COMPLIANT)]
-        rdklibtest.assert_successful_evaluation(self, response, resp_expected, 1)
+        rdklibtest.assert_successful_evaluation(self, response, resp_expected)
 
     def test_scenario2_evaluatechange_nologsenabledonrds_returnsnoncompliant(self):
         response = RULE.evaluate_change(None, CLIENT_FACTORY, self.no_logs_enabled_non_compliant, None)
         resp_expected = [Evaluation(ComplianceType.NON_COMPLIANT,
-                                    annotation="['postgresql', 'upgrade'] logs are not enabled")]
-        rdklibtest.assert_successful_evaluation(self, response, resp_expected, 1)
+                                    annotation="One or more logs are not enabled")]
+        rdklibtest.assert_successful_evaluation(self, response, resp_expected)
 
     def test_scenario2_evaluatechange_onetypeoflogisenabledonrds_returnsnoncompliant(self):
         response = RULE.evaluate_change(None, CLIENT_FACTORY, self.one_log_enabled_non_compliant, None)
         resp_expected = [Evaluation(ComplianceType.NON_COMPLIANT,
-                                    annotation="['audit', 'general', 'slowquery'] logs are not enabled")]
-        rdklibtest.assert_successful_evaluation(self, response, resp_expected, 1)
+                                    annotation="One or more logs are not enabled")]
+        rdklibtest.assert_successful_evaluation(self, response, resp_expected)
+
+    def test_scenario3_evaluatechange_specifiedenginenotpresent_returnsnotapplicable(self):
+        response = RULE.evaluate_change(None, CLIENT_FACTORY, self.specified_engine_not_present_not_applicable, None)
+        resp_expected = [Evaluation(ComplianceType.NOT_APPLICABLE,
+                                    annotation="Engine is not defined")]
+        rdklibtest.assert_successful_evaluation(self, response, resp_expected)
